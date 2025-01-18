@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>緊急地震速報地図</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
+    <style>
+        body {
+            text-align: center;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        #map {
+            width: 100%;
+            height: 100vh;
+        }
+        h1 {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            font-size: 24px;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>緊急地震速報地図</h1>
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+    <script>
+        // 地図の初期化
+        const map = L.map('map').setView([36.9, 136.4], 6); // 初期位置を能登半島沖に設定
+
+        // OpenStreetMapのタイルレイヤーを設定
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        // APIから地震速報データを取得
+        fetch("https://api.wolfx.jp/jma_eew.json")
+            .then(response => response.json())  // JSONデータとしてパース
+            .then(data => {
+                // 取得したデータから震源情報を取得
+                const epicenterLatitude = data.Latitude;   // 震源地の緯度
+                const epicenterLongitude = data.Longitude; // 震源地の経度
+                const hypocenter = data.Hypocenter;        // 震源地名
+                const magnitude = data.Magunitude;         // マグニチュード
+                const depth = data.Depth;                  // 深さ
+                const originTime = data.OriginTime;        // 発生時刻
+                const announcedTime = data.AnnouncedTime;  // 発表時刻
+
+                // 時刻をISO 8601形式に変換して計算
+                const originDate = new Date(originTime);
+                const announcedDate = new Date(announcedTime);
+
+                // 発表時刻と震源時刻の差を計算（秒単位）
+                const timeDiff = (announcedDate - originDate) / 1000;
+
+                // 震源時刻からx秒後のP波とS波の予想範囲を描画
+                const pWaveSpeed = 5.5; // km/s (P波)
+                const sWaveSpeed = 3.5; // km/s (S波)
+
+                // 時間差に基づいてP波とS波の伝播範囲（km）を計算
+                const pWaveDistance = pWaveSpeed * timeDiff;
+                const sWaveDistance = sWaveSpeed * timeDiff;
+
+                // 震源地のマーカーを地図に追加
+                const epicenter = [epicenterLatitude, epicenterLongitude];
+                const epicenterMarker = L.marker(epicenter).addTo(map);
+
+                // ポップアップに震源情報を表示
+                epicenterMarker.bindPopup(`
+                    <strong>震源地:</strong> ${hypocenter}<br>
+                    <strong>発生時刻:</strong> ${originTime}<br>
+                    <strong>発表時刻:</strong> ${announcedTime}<br>
+                    <strong>マグニチュード:</strong> ${magnitude}<br>
+                    <strong>震源の深さ:</strong> ${depth} km<br>
+                    <strong>発表からの経過時間:</strong> ${timeDiff} 秒
+                `).openPopup();
+
+                // P波とS波の伝播範囲を円で描画
+                const pWaveCircle = L.circle(epicenter, {
+                    radius: pWaveDistance * 1000, // 距離をメートルに変換
+                    color: 'red',
+                    fillColor: 'red',
+                    fillOpacity: 0.3,
+                    weight: 1,
+                    opacity: 0.6
+                }).addTo(map);
+                pWaveCircle.bindPopup(`<strong>P波伝播範囲</strong><br>距離: ${pWaveDistance} km`);
+
+                const sWaveCircle = L.circle(epicenter, {
+                    radius: sWaveDistance * 1000, // 距離をメートルに変換
+                    color: 'blue',
+                    fillColor: 'blue',
+                    fillOpacity: 0.3,
+                    weight: 1,
+                    opacity: 0.6
+                }).addTo(map);
+                sWaveCircle.bindPopup(`<strong>S波伝播範囲</strong><br>距離: ${sWaveDistance} km`);
+
+            })
+            .catch(error => {
+                console.error("地震速報データの取得に失敗しました:", error);
+            });
+    </script>
+</body>
+</html>
