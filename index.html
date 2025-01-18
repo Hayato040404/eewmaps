@@ -36,6 +36,14 @@
 
     <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
     <script>
+        // 地図の初期化
+        const map = L.map('map').setView([36.9, 136.4], 8); // 初期位置を能登半島沖に設定
+
+        // OpenStreetMapのタイルレイヤーを設定
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
         // APIから地震速報データを取得
         fetch("https://api.wolfx.jp/jma_eew.json")
             .then(response => response.json())  // JSONデータとしてパース
@@ -48,15 +56,6 @@
                 const depth = data.Depth;                  // 深さ
                 const originTime = data.OriginTime;        // 発生時刻
                 const announcedTime = data.AnnouncedTime;  // 発表時刻
-        // 地図の初期化
-        const map = L.map('map').setView([${Latitude}, ${Longitude}], 8); // 初期位置を能登半島沖に設定
-
-        // OpenStreetMapのタイルレイヤーを設定
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        }).addTo(map);
-
-        
 
                 // 時刻をISO 8601形式に変換して計算
                 const originDate = new Date(originTime);
